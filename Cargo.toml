@@ -1,0 +1,11 @@
+[package]
+name = "cloud-util"
+version = "0.1.0"
+authors = ["ypf <yuitta@163.com>", "Rivtower Technologies <contact@rivtower.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto", branch = "wip-7.0.0-dev" }
+status_code = { path = "../status_code" }
