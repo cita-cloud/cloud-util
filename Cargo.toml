@@ -7,5 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+log = "0.4"
+prost = "0.8"
+tonic = "0.5"
 cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto", branch = "wip-7.0.0-dev" }
-status_code = { path = "../status_code" }
+status_code = { git = "https://github.com/cita-cloud/status_code" }
