@@ -19,10 +19,13 @@ use cita_cloud_proto::blockchain::{
 use cita_cloud_proto::common::Address;
 use status_code::StatusCode;
 
+pub const ADDR_BYTES_LEN: usize = 20;
+pub const HASH_BYTES_LEN: usize = 32;
+
 pub fn h160_address_check(address: Option<&Address>) -> Result<(), StatusCode> {
     match address {
         Some(addr) => {
-            if addr.address.len() == 20 {
+            if addr.address.len() == ADDR_BYTES_LEN {
                 Ok(())
             } else {
                 Err(StatusCode::ProvideAddressError)

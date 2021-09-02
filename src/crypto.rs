@@ -11,13 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cita_cloud_proto::blockchain::BlockHeader;
+use cita_cloud_proto::blockchain::{BlockHeader, RawTransaction};
 use cita_cloud_proto::kms::kms_service_client::KmsServiceClient;
 use cita_cloud_proto::kms::HashDataRequest;
 use log::warn;
 use prost::Message;
 use status_code::StatusCode;
 use tonic::transport::Channel;
+use crate::common::{HASH_BYTES_LEN, ADDR_BYTES_LEN};
 
 pub async fn hash_data(
     mut client: KmsServiceClient<Channel>,
@@ -58,4 +59,8 @@ pub async fn get_block_hash(
         }
         None => return Err(StatusCode::NoneBlockHeader),
     }
+}
+
+pub fn pk2address(client: KmsServiceClient<Channel>, pk: Vec<u8>) -> Vec<u8> {
+    hash_data(client, pk)[HASH_BYTES_LEN - ADDR_BYTES_LEN..].to_vec()
 }
