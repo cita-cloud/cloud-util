@@ -18,6 +18,10 @@ use cita_cloud_proto::blockchain::{
 };
 use cita_cloud_proto::common::Address;
 use status_code::StatusCode;
+use std::fs;
+use std::path::Path;
+use toml::macros::Deserialize;
+use toml::Value;
 
 pub const ADDR_BYTES_LEN: usize = 20;
 pub const HASH_BYTES_LEN: usize = 32;
@@ -70,5 +74,28 @@ pub fn extract_compact(block: Block) -> CompactBlock {
         version: block.version,
         header: block.header,
         body: Some(compact_body),
+    }
+}
+
+fn read_toml<'a, T: Deserialize<'a>>(path: impl AsRef<Path>, name: &'a str) -> T {
+    let s = fs::read_to_string(path).unwrap();
+    let config: Value = s.parse().unwrap();
+    T::deserialize(config[name].clone()).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_derive::{Deserialize, Serialize};
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct ExecutorConfig {
+        port: u16,
+    }
+
+    #[test]
+    fn it_works() {
+        let config: ExecutorConfig = read_toml("src/example/sample.toml", "executor");
+        assert_eq!(config.port, 50002);
     }
 }
