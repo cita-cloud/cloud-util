@@ -14,7 +14,6 @@
 
 use cita_cloud_proto::storage::storage_service_client::StorageServiceClient;
 use cita_cloud_proto::storage::{Content, ExtKey};
-use prost::Message;
 use status_code::StatusCode;
 use tonic::transport::Channel;
 use tonic::Request;
