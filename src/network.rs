@@ -19,7 +19,7 @@ use status_code::StatusCode;
 use tonic::transport::Channel;
 use tonic::Request;
 
-async fn register_network_msg_handler(
+pub async fn register_network_msg_handler(
     mut client: NetworkServiceClient<Channel>,
     register_info: RegisterInfo,
 ) -> StatusCode {

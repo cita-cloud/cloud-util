@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod common;
-mod crypto;
-mod network;
+pub mod common;
+pub mod crypto;
+pub mod network;
+pub mod storage;
 
 pub fn unix_now() -> u64 {
     let d = ::std::time::UNIX_EPOCH.elapsed().unwrap();

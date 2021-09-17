@@ -14,7 +14,7 @@
 use crate::common::{ADDR_BYTES_LEN, HASH_BYTES_LEN};
 use cita_cloud_proto::blockchain::BlockHeader;
 use cita_cloud_proto::kms::kms_service_client::KmsServiceClient;
-use cita_cloud_proto::kms::HashDataRequest;
+use cita_cloud_proto::kms::{HashDataRequest, RecoverSignatureRequest, SignMessageRequest};
 use log::warn;
 use prost::Message;
 use status_code::StatusCode;
@@ -22,8 +22,9 @@ use tonic::transport::Channel;
 
 pub async fn hash_data(
     mut client: KmsServiceClient<Channel>,
-    data: Vec<u8>,
+    data: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
+    let data = data.to_vec();
     match client.hash_data(HashDataRequest { data }).await {
         Ok(res) => {
             let hash_respond = res.into_inner();
@@ -54,7 +55,7 @@ pub async fn get_block_hash(
                 warn!("get_block_hash: encode block header failed");
                 StatusCode::EncodeError
             })?;
-            let block_hash = hash_data(client, block_header_bytes).await?;
+            let block_hash = hash_data(client, &block_header_bytes).await?;
             Ok(block_hash)
         }
         None => Err(StatusCode::NoneBlockHeader),
@@ -63,7 +64,57 @@ pub async fn get_block_hash(
 
 pub async fn pk2address(
     client: KmsServiceClient<Channel>,
-    pk: Vec<u8>,
+    pk: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
     Ok(hash_data(client, pk).await?[HASH_BYTES_LEN - ADDR_BYTES_LEN..].to_vec())
+}
+
+pub async fn sign_message(
+    mut client: KmsServiceClient<Channel>,
+    key_id: u64,
+    msg: &[u8],
+) -> Result<Vec<u8>, StatusCode> {
+    let respond = client
+        .sign_message(SignMessageRequest {
+            key_id,
+            msg: msg.to_vec(),
+        })
+        .await
+        .map_err(|e| {
+            warn!("recover_signature failed: {}", e.to_string());
+            StatusCode::KmsServerNotReady
+        })?;
+
+    let rsr = respond.into_inner();
+    let status = StatusCode::from(rsr.status.ok_or(StatusCode::NoneStatusCode)?);
+    if status != StatusCode::Success {
+        Err(status)
+    } else {
+        Ok(rsr.signature)
+    }
+}
+
+pub async fn recover_signature(
+    mut client: KmsServiceClient<Channel>,
+    signature: &[u8],
+    msg: &[u8],
+) -> Result<Vec<u8>, StatusCode> {
+    let respond = client
+        .recover_signature(RecoverSignatureRequest {
+            msg: msg.to_vec(),
+            signature: signature.to_vec(),
+        })
+        .await
+        .map_err(|e| {
+            warn!("recover_signature failed: {}", e.to_string());
+            StatusCode::KmsServerNotReady
+        })?;
+
+    let rsr = respond.into_inner();
+    let status = StatusCode::from(rsr.status.ok_or(StatusCode::NoneStatusCode)?);
+    if status != StatusCode::Success {
+        Err(status)
+    } else {
+        Ok(rsr.address)
+    }
 }
