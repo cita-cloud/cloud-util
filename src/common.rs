@@ -77,7 +77,7 @@ pub fn extract_compact(block: Block) -> CompactBlock {
     }
 }
 
-fn read_toml<'a, T: Deserialize<'a>>(path: impl AsRef<Path>, name: &'a str) -> T {
+pub fn read_toml<'a, T: Deserialize<'a>>(path: impl AsRef<Path>, name: &'a str) -> T {
     let s = fs::read_to_string(path).unwrap();
     let config: Value = s.parse().unwrap();
     T::deserialize(config[name].clone()).unwrap()
