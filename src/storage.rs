@@ -46,5 +46,8 @@ pub async fn load_data(
         log::warn!("load_data({:?}) failed: {}", ext_key, e.to_string());
         StatusCode::StorageServerNotReady
     })?;
-    Ok(response.into_inner().value)
+
+    let value = response.into_inner();
+    StatusCode::from(value.status.ok_or(StatusCode::NoneStatusCode)?).is_success()?;
+    Ok(value.value)
 }
