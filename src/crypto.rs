@@ -81,7 +81,7 @@ pub async fn sign_message(
         })
         .await
         .map_err(|e| {
-            warn!("recover_signature failed: {}", e.to_string());
+            warn!("sign_message failed: {}", e.to_string());
             StatusCode::KmsServerNotReady
         })?;
 
