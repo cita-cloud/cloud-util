@@ -12,8 +12,8 @@ description = "cita-cloud utility library"
 log = "0.4"
 prost = "0.8"
 tonic = "0.5"
-cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
-status_code = { package = "cloud-code", git = "https://github.com/cita-cloud/status_code" }
+cita_cloud_proto = "=6.3.0"
+status_code = { package = "cloud-code", version = "0.1" }
 toml = "0.5.8"
 
 [dev-dependencies]
