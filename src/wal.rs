@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crc32fast::Hasher as CrcHasher;
 use log::warn;
+use std::collections::hash_map::DefaultHasher;
 use std::fs::{read_dir, DirBuilder, File, OpenOptions};
+use std::hash::{Hash, Hasher};
 use std::io::{self, Read, Seek, Write};
 use std::str;
 use std::{
@@ -188,9 +189,7 @@ impl Wal {
         if let Some(fs) = self.height_fs.get_mut(&height) {
             let len_bytes: [u8; 4] = mlen.to_le_bytes();
             let type_bytes: [u8; 1] = [mtype];
-            let mut crc = CrcHasher::new();
-            crc.update(msg);
-            let check_sum = crc.finalize();
+            let check_sum = calculate_hash(&msg);
             fs.seek(io::SeekFrom::End(0))?;
             fs.write_all(&len_bytes[..])?;
             fs.write_all(&type_bytes[..])?;
@@ -207,7 +206,6 @@ impl Wal {
         Ok(hlen as u64)
     }
 
-    #[allow(dead_code)]
     pub fn get_cur_height(&self) -> u64 {
         self.current_height
     }
@@ -231,7 +229,7 @@ impl Wal {
             }
             let fsize = res_fsize.unwrap();
             let mut index = 0;
-            let crc = CrcHasher::new();
+
             loop {
                 if index + 9 > fsize {
                     break;
@@ -240,16 +238,15 @@ impl Wal {
                 let bodylen = tmp as usize;
                 let mtype = vec_buf[index + 4];
                 let saved_crc =
-                    u32::from_le_bytes(vec_buf[index + 5..index + 9].try_into().unwrap());
+                    u64::from_le_bytes(vec_buf[index + 5..index + 9].try_into().unwrap());
                 index += 9;
                 if index + bodylen > fsize {
                     break;
                 }
-                let mut crc = crc.clone();
 
-                crc.update(&vec_buf[index..index + bodylen]);
+                let msg = &vec_buf[index..index + bodylen];
+                let check_sum = calculate_hash(&msg);
 
-                let check_sum = crc.finalize();
                 if check_sum != saved_crc {
                     warn!(
                         "wal crc checked error saved {} check {}",
@@ -257,7 +254,7 @@ impl Wal {
                     );
                     break;
                 }
-                vec_out.push((mtype, vec_buf[index..index + bodylen].to_vec()));
+                vec_out.push((mtype, msg.to_vec()));
                 index += bodylen;
             }
         }
@@ -279,31 +276,8 @@ impl Wal {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use crc32fast::Hasher as CrcHasher;
-    #[test]
-    fn test_crc() {
-        let msg1: Vec<u8> = vec![1, 2, 3, 4, 5];
-        let msg2: Vec<u8> = vec![5, 4, 3, 2, 1];
-
-        let mut crc = CrcHasher::new();
-        crc.update(&msg1);
-        let check_sum1 = crc.finalize();
-
-        let mut crc = CrcHasher::new();
-        crc.update(&msg2);
-        let check_sum2 = crc.finalize();
-
-        let mut crc = CrcHasher::new();
-        crc.update(&msg2);
-        let sencond_check2 = crc.finalize();
-
-        let mut crc = CrcHasher::new();
-        crc.update(&msg1);
-        let sencond_check1 = crc.finalize();
-
-        assert_eq!(check_sum1, sencond_check1);
-        assert_eq!(check_sum2, sencond_check2);
-    }
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
 }
