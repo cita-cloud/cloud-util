@@ -78,9 +78,16 @@ pub fn extract_compact(block: Block) -> CompactBlock {
 }
 
 pub fn read_toml<'a, T: Deserialize<'a>>(path: impl AsRef<Path>, name: &'a str) -> T {
-    let s = fs::read_to_string(path).unwrap();
-    let config: Value = s.parse().unwrap();
-    T::deserialize(config[name].clone()).unwrap()
+    let s = fs::read_to_string(path)
+        .map_err(|e| println!("read_to_string err: {}", e))
+        .unwrap();
+    let config: Value = s
+        .parse()
+        .map_err(|e| println!("toml parse err: {}", e))
+        .unwrap();
+    T::deserialize(config[name].clone())
+        .map_err(|e| println!("config deserialize err: {}", e))
+        .unwrap()
 }
 
 #[cfg(test)]
