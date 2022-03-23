@@ -234,11 +234,25 @@ impl Wal {
                 if index + 9 > fsize {
                     break;
                 }
-                let tmp = u32::from_le_bytes(vec_buf[index..index + 4].try_into().unwrap());
+                let bytes = match vec_buf[index..index + 4].try_into() {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        warn!("wal file may be corrupted: {}", e);
+                        return Vec::new();
+                    }
+                };
+                let tmp = u32::from_le_bytes(bytes);
                 let bodylen = tmp as usize;
                 let mtype = vec_buf[index + 4];
-                let saved_crc =
-                    u64::from_le_bytes(vec_buf[index + 5..index + 9].try_into().unwrap());
+
+                let bytes = match vec_buf[index + 5..index + 9].try_into() {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        warn!("wal file may be corrupted: {}", e);
+                        return Vec::new();
+                    }
+                };
+                let saved_crc = u64::from_le_bytes(bytes);
                 index += 9;
                 if index + bodylen > fsize {
                     break;
