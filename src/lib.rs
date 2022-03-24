@@ -16,6 +16,7 @@ pub mod common;
 pub mod crypto;
 pub mod network;
 pub mod storage;
+pub mod wal;
 
 pub fn unix_now() -> u64 {
     let d = ::std::time::UNIX_EPOCH.elapsed().unwrap();
