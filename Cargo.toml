@@ -1,8 +1,8 @@
 [package]
 name = "cloud-util"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["ypf <yuitta@163.com>", "Rivtower Technologies <contact@rivtower.com>"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 description = "cita-cloud utility library"
 
