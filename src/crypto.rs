@@ -13,15 +13,15 @@
 
 use crate::common::{ADDR_BYTES_LEN, HASH_BYTES_LEN};
 use cita_cloud_proto::blockchain::BlockHeader;
-use cita_cloud_proto::kms::kms_service_client::KmsServiceClient;
-use cita_cloud_proto::kms::{HashDataRequest, RecoverSignatureRequest, SignMessageRequest};
+use cita_cloud_proto::crypto::crypto_service_client::CryptoServiceClient;
+use cita_cloud_proto::crypto::{HashDataRequest, RecoverSignatureRequest, SignMessageRequest};
 use log::warn;
 use prost::Message;
 use status_code::StatusCode;
 use tonic::transport::Channel;
 
 pub async fn hash_data(
-    mut client: KmsServiceClient<Channel>,
+    mut client: CryptoServiceClient<Channel>,
     data: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
     let data = data.to_vec();
@@ -39,13 +39,13 @@ pub async fn hash_data(
         }
         Err(status) => {
             warn!("hash_data error: {}", status.to_string());
-            Err(StatusCode::KmsServerNotReady)
+            Err(StatusCode::CryptoServerNotReady)
         }
     }
 }
 
 pub async fn get_block_hash(
-    client: KmsServiceClient<Channel>,
+    client: CryptoServiceClient<Channel>,
     header: Option<&BlockHeader>,
 ) -> Result<Vec<u8>, StatusCode> {
     match header {
@@ -63,26 +63,24 @@ pub async fn get_block_hash(
 }
 
 pub async fn pk2address(
-    client: KmsServiceClient<Channel>,
+    client: CryptoServiceClient<Channel>,
     pk: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
     Ok(hash_data(client, pk).await?[HASH_BYTES_LEN - ADDR_BYTES_LEN..].to_vec())
 }
 
 pub async fn sign_message(
-    mut client: KmsServiceClient<Channel>,
-    key_id: u64,
+    mut client: CryptoServiceClient<Channel>,
     msg: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
     let respond = client
         .sign_message(SignMessageRequest {
-            key_id,
             msg: msg.to_vec(),
         })
         .await
         .map_err(|e| {
             warn!("sign_message failed: {}", e.to_string());
-            StatusCode::KmsServerNotReady
+            StatusCode::CryptoServerNotReady
         })?;
 
     let rsr = respond.into_inner();
@@ -95,7 +93,7 @@ pub async fn sign_message(
 }
 
 pub async fn recover_signature(
-    mut client: KmsServiceClient<Channel>,
+    mut client: CryptoServiceClient<Channel>,
     signature: &[u8],
     msg: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
@@ -107,7 +105,7 @@ pub async fn recover_signature(
         .await
         .map_err(|e| {
             warn!("recover_signature failed: {}", e.to_string());
-            StatusCode::KmsServerNotReady
+            StatusCode::CryptoServerNotReady
         })?;
 
     let rsr = respond.into_inner();
