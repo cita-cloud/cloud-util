@@ -231,13 +231,13 @@ impl Wal {
             let mut index = 0;
 
             loop {
-                if index + 9 > fsize {
+                if index + 13 > fsize {
                     break;
                 }
                 let bytes = match vec_buf[index..index + 4].try_into() {
                     Ok(bytes) => bytes,
                     Err(e) => {
-                        warn!("wal file may be corrupted: {}", e);
+                        warn!("wal file may be corrupted in len_bytes: {}", e);
                         return Vec::new();
                     }
                 };
@@ -245,15 +245,15 @@ impl Wal {
                 let bodylen = tmp as usize;
                 let mtype = vec_buf[index + 4];
 
-                let bytes = match vec_buf[index + 5..index + 9].try_into() {
+                let bytes = match vec_buf[index + 5..index + 13].try_into() {
                     Ok(bytes) => bytes,
                     Err(e) => {
-                        warn!("wal file may be corrupted: {}", e);
+                        warn!("wal file may be corrupted in check_sum: {}", e);
                         return Vec::new();
                     }
                 };
                 let saved_crc = u64::from_le_bytes(bytes);
-                index += 9;
+                index += 13;
                 if index + bodylen > fsize {
                     break;
                 }
