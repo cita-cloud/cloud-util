@@ -279,7 +279,7 @@ impl Wal {
         self.height_fs.clear();
         for entry in read_dir(self.dir.clone())? {
             let fpath = entry?.path();
-            let fname = fpath.file_name().map(|f| f.to_str()).flatten();
+            let fname = fpath.file_name().and_then(|f| f.to_str());
             if let Some(fname) = fname {
                 if !fname.contains(INDEX_NAME) {
                     let _ = ::std::fs::remove_file(fpath);
