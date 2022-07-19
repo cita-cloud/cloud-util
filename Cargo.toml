@@ -11,8 +11,8 @@ description = "cita-cloud utility library"
 [dependencies]
 log = "0.4"
 prost = "0.10.4"
-cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
-status_code = { package = "cloud-code", git = "https://github.com/cita-cloud/status_code" }
+cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto", branch = "retry_netmsghandler" }
+status_code = { package = "cloud-code", git = "https://github.com/cita-cloud/status_code", branch = "switch-to-retryclient" }
 toml = "0.5.8"
 
 [dev-dependencies]
