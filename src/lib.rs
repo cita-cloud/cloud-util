@@ -14,6 +14,7 @@
 
 pub mod common;
 pub mod crypto;
+pub mod metrics;
 pub mod network;
 pub mod storage;
 pub mod wal;
