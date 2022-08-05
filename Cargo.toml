@@ -17,6 +17,7 @@ tower = "0.4.13"
 futures = "0.3.21"
 hyper = { version = "0.14", features = ["full"] }
 prometheus = "0.13"
+regex = "1.6.0"
 
 cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
 status_code = { package = "cloud-code", git = "https://github.com/cita-cloud/status_code" }

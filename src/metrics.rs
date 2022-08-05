@@ -5,6 +5,7 @@ use hyper::{
 };
 use log::info;
 use prometheus::{gather, register_histogram, Encoder, Histogram, TextEncoder};
+use regex::Regex;
 use std::task::{Context, Poll};
 use std::time::Instant;
 use std::{collections::HashMap, convert::Infallible};
@@ -60,15 +61,11 @@ where
 
         let s = format!("{:?}", req);
         if s.contains("client-name") {
-            let client_name = s.split("client-name\": \"").collect::<Vec<_>>()[1]
-                .split("\", \"user-agent")
-                .collect::<Vec<_>>()[0]
-                .to_string();
-            let func_name = s.split("Service/").collect::<Vec<_>>()[1]
-                .split(", version:")
-                .collect::<Vec<_>>()[0]
-                .to_string();
-            let key = (client_name.clone(), func_name.clone());
+            let re = Regex::new(r"(Service/)(.+)(, version)(.+)(client-name\u0022: \u0022)(.+)(\u0022, \u0022user-agent)").unwrap();
+            let caps = re.captures(&s).unwrap();
+            let func_name = caps.get(2).unwrap().as_str();
+            let client_name = caps.get(6).unwrap().as_str();
+            let key = (client_name.to_string(), func_name.to_string());
 
             let histogram = self.metrics_data.entry(key).or_insert_with(|| {
                 register_histogram!(
