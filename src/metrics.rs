@@ -110,7 +110,7 @@ pub async fn run_metrics_exporter(
 
     let addr = ([0, 0, 0, 0], port).into();
     let server = Server::bind(&addr).serve(make_svc);
-    info!("exporting metrics to http://{}", addr);
+    info!("exporting metrics to http://{}/metrics", addr);
 
     server.await?;
 
