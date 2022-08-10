@@ -13,21 +13,21 @@
 
 use crate::common::{ADDR_BYTES_LEN, HASH_BYTES_LEN};
 use cita_cloud_proto::blockchain::BlockHeader;
-use cita_cloud_proto::kms::kms_service_client::KmsServiceClient;
-use cita_cloud_proto::kms::{HashDataRequest, RecoverSignatureRequest, SignMessageRequest};
+use cita_cloud_proto::client::{CryptoClientTrait, InterceptedSvc};
+use cita_cloud_proto::crypto::crypto_service_client::CryptoServiceClient;
+use cita_cloud_proto::crypto::{HashDataRequest, RecoverSignatureRequest, SignMessageRequest};
+use cita_cloud_proto::retry::RetryClient;
 use log::warn;
 use prost::Message;
 use status_code::StatusCode;
-use tonic::transport::Channel;
 
 pub async fn hash_data(
-    mut client: KmsServiceClient<Channel>,
+    client: RetryClient<CryptoServiceClient<InterceptedSvc>>,
     data: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
     let data = data.to_vec();
     match client.hash_data(HashDataRequest { data }).await {
-        Ok(res) => {
-            let hash_respond = res.into_inner();
+        Ok(hash_respond) => {
             let status_code =
                 StatusCode::from(hash_respond.status.ok_or(StatusCode::NoneStatusCode)?.code);
 
@@ -39,13 +39,13 @@ pub async fn hash_data(
         }
         Err(status) => {
             warn!("hash_data error: {}", status.to_string());
-            Err(StatusCode::KmsServerNotReady)
+            Err(StatusCode::CryptoServerNotReady)
         }
     }
 }
 
 pub async fn get_block_hash(
-    client: KmsServiceClient<Channel>,
+    client: RetryClient<CryptoServiceClient<InterceptedSvc>>,
     header: Option<&BlockHeader>,
 ) -> Result<Vec<u8>, StatusCode> {
     match header {
@@ -63,43 +63,38 @@ pub async fn get_block_hash(
 }
 
 pub async fn pk2address(
-    client: KmsServiceClient<Channel>,
+    client: RetryClient<CryptoServiceClient<InterceptedSvc>>,
     pk: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
     Ok(hash_data(client, pk).await?[HASH_BYTES_LEN - ADDR_BYTES_LEN..].to_vec())
 }
 
 pub async fn sign_message(
-    mut client: KmsServiceClient<Channel>,
-    key_id: u64,
+    client: RetryClient<CryptoServiceClient<InterceptedSvc>>,
     msg: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
-    let respond = client
-        .sign_message(SignMessageRequest {
-            key_id,
-            msg: msg.to_vec(),
-        })
+    let smr = client
+        .sign_message(SignMessageRequest { msg: msg.to_vec() })
         .await
         .map_err(|e| {
             warn!("sign_message failed: {}", e.to_string());
-            StatusCode::KmsServerNotReady
+            StatusCode::CryptoServerNotReady
         })?;
 
-    let rsr = respond.into_inner();
-    let status = StatusCode::from(rsr.status.ok_or(StatusCode::NoneStatusCode)?);
+    let status = StatusCode::from(smr.status.ok_or(StatusCode::NoneStatusCode)?);
     if status != StatusCode::Success {
         Err(status)
     } else {
-        Ok(rsr.signature)
+        Ok(smr.signature)
     }
 }
 
 pub async fn recover_signature(
-    mut client: KmsServiceClient<Channel>,
+    client: RetryClient<CryptoServiceClient<InterceptedSvc>>,
     signature: &[u8],
     msg: &[u8],
 ) -> Result<Vec<u8>, StatusCode> {
-    let respond = client
+    let rsr = client
         .recover_signature(RecoverSignatureRequest {
             msg: msg.to_vec(),
             signature: signature.to_vec(),
@@ -107,10 +102,9 @@ pub async fn recover_signature(
         .await
         .map_err(|e| {
             warn!("recover_signature failed: {}", e.to_string());
-            StatusCode::KmsServerNotReady
+            StatusCode::CryptoServerNotReady
         })?;
 
-    let rsr = respond.into_inner();
     let status = StatusCode::from(rsr.status.ok_or(StatusCode::NoneStatusCode)?);
     if status != StatusCode::Success {
         Err(status)

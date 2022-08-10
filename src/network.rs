@@ -12,21 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use cita_cloud_proto::client::{InterceptedSvc, NetworkClientTrait};
 use cita_cloud_proto::network::network_service_client::NetworkServiceClient;
 use cita_cloud_proto::network::RegisterInfo;
+use cita_cloud_proto::retry::RetryClient;
 use log::warn;
 use status_code::StatusCode;
-use tonic::transport::Channel;
-use tonic::Request;
 
 pub async fn register_network_msg_handler(
-    mut client: NetworkServiceClient<Channel>,
+    client: RetryClient<NetworkServiceClient<InterceptedSvc>>,
     register_info: RegisterInfo,
 ) -> StatusCode {
-    let request = Request::new(register_info);
-
-    match client.register_network_msg_handler(request).await {
-        Ok(res) => StatusCode::from(res.into_inner().code),
+    match client.register_network_msg_handler(register_info).await {
+        Ok(code) => StatusCode::from(code),
         Err(status) => {
             warn!("register_network_msg_handler error: {}", status.to_string());
             StatusCode::NetworkServerNotReady

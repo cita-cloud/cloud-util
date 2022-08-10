@@ -231,13 +231,13 @@ impl Wal {
             let mut index = 0;
 
             loop {
-                if index + 9 > fsize {
+                if index + 13 > fsize {
                     break;
                 }
                 let bytes = match vec_buf[index..index + 4].try_into() {
                     Ok(bytes) => bytes,
                     Err(e) => {
-                        warn!("wal file may be corrupted: {}", e);
+                        warn!("wal file may be corrupted in len_bytes: {}", e);
                         return Vec::new();
                     }
                 };
@@ -245,15 +245,15 @@ impl Wal {
                 let bodylen = tmp as usize;
                 let mtype = vec_buf[index + 4];
 
-                let bytes = match vec_buf[index + 5..index + 9].try_into() {
+                let bytes = match vec_buf[index + 5..index + 13].try_into() {
                     Ok(bytes) => bytes,
                     Err(e) => {
-                        warn!("wal file may be corrupted: {}", e);
+                        warn!("wal file may be corrupted in check_sum: {}", e);
                         return Vec::new();
                     }
                 };
                 let saved_crc = u64::from_le_bytes(bytes);
-                index += 9;
+                index += 13;
                 if index + bodylen > fsize {
                     break;
                 }
@@ -279,7 +279,7 @@ impl Wal {
         self.height_fs.clear();
         for entry in read_dir(self.dir.clone())? {
             let fpath = entry?.path();
-            let fname = fpath.file_name().map(|f| f.to_str()).flatten();
+            let fname = fpath.file_name().and_then(|f| f.to_str());
             if let Some(fname) = fname {
                 if !fname.contains(INDEX_NAME) {
                     let _ = ::std::fs::remove_file(fpath);
