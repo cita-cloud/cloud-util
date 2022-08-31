@@ -3,7 +3,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Method, Request, Response, Server,
 };
-use log::info;
+use log::{info, warn};
 use prometheus::{gather, register_histogram, Encoder, Histogram, TextEncoder};
 use regex::Regex;
 use std::task::{Context, Poll};
@@ -67,22 +67,45 @@ where
             let client_name = caps.get(6).unwrap().as_str();
             let key = (client_name.to_string(), func_name.to_string());
 
-            let histogram = self.metrics_data.entry(key).or_insert_with(|| {
-                register_histogram!(
+            if !self.metrics_data.contains_key(&key) {
+                match register_histogram!(
                     format!("{}_to_{}", client_name, func_name),
                     "request latencies in milliseconds(ms)",
                     self.buckets.clone(),
-                )
-                .map_err(|e| {
-                    info!(
-                        "{} register fail",
-                        format!("{}_to_{}", client_name, func_name)
-                    );
-                    e
-                })
-                .unwrap()
-            });
-            let histogram = histogram.clone();
+                ) {
+                    Ok(histogram) => {
+                        info!(
+                            "register histogram {} succeeded",
+                            format!("{}_to_{}", client_name, func_name)
+                        );
+                        self.metrics_data.insert(key.clone(), histogram);
+                    }
+                    Err(e) => {
+                        warn!(
+                            "register histogram {} failed with error: {}, ignored metrics",
+                            format!("{}_to_{}", client_name, func_name),
+                            e.to_string()
+                        );
+                        return Box::pin(async move {
+                            let response = inner.call(req).await?;
+                            Ok(response)
+                        });
+                    }
+                }
+            }
+
+            let histogram = if let Some(h) = self.metrics_data.get(&key) {
+                h.to_owned()
+            } else {
+                warn!(
+                    "register histogram {} succeeded but get it failed, ignored metrics",
+                    format!("{}_to_{}", client_name, func_name)
+                );
+                return Box::pin(async move {
+                    let response = inner.call(req).await?;
+                    Ok(response)
+                });
+            };
 
             return Box::pin(async move {
                 let started = Instant::now();
