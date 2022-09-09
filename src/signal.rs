@@ -12,23 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod common;
-pub mod crypto;
-pub mod metrics;
-pub mod network;
-pub mod signal;
-pub mod storage;
-pub mod wal;
+use futures::stream::StreamExt;
+use log::info;
+use signal_hook::{consts::signal::*, low_level::exit};
+use signal_hook_tokio::Signals;
 
-pub fn unix_now() -> u64 {
-    let d = ::std::time::UNIX_EPOCH.elapsed().unwrap();
-    d.as_secs() * 1_000 + u64::from(d.subsec_millis())
-}
-
-pub fn clean_0x(s: &str) -> &str {
-    if let Some(stripped) = s.strip_prefix("0x") {
-        stripped
-    } else {
-        s
+pub async fn handle_signals() {
+    let mut signals = Signals::new(&[SIGTERM]).unwrap();
+    while let Some(signal) = signals.next().await {
+        match signal {
+            SIGTERM => {
+                info!("exit by signal: {signal}");
+                exit(0);
+            }
+            _ => unreachable!(),
+        }
     }
 }
