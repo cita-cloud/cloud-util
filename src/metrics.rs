@@ -3,14 +3,23 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Method, Request, Response, Server,
 };
+use lazy_static::lazy_static;
 use log::{info, warn};
 use prometheus::{gather, register_histogram, Encoder, Histogram, TextEncoder};
 use regex::Regex;
-use std::task::{Context, Poll};
 use std::time::Instant;
 use std::{collections::HashMap, convert::Infallible};
+use std::{
+    sync::{Arc, RwLock},
+    task::{Context, Poll},
+};
 use tonic::body::BoxBody;
 use tower::{Layer, Service};
+
+lazy_static! {
+    static ref METRICS_DATA: Arc<RwLock<HashMap<(String, String), Histogram>>> =
+        Arc::new(RwLock::new(HashMap::new()));
+}
 
 #[derive(Debug, Clone)]
 pub struct MiddlewareLayer {
@@ -24,25 +33,23 @@ impl MiddlewareLayer {
 }
 
 impl<S> Layer<S> for MiddlewareLayer {
-    type Service = MetricsData<S>;
+    type Service = MetricsService<S>;
 
     fn layer(&self, service: S) -> Self::Service {
-        MetricsData {
+        MetricsService {
             inner: service,
-            metrics_data: HashMap::new(),
             buckets: self.buckets.clone(),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct MetricsData<S> {
+pub struct MetricsService<S> {
     inner: S,
-    metrics_data: HashMap<(String, String), Histogram>,
     buckets: Vec<f64>,
 }
 
-impl<S> Service<Request<Body>> for MetricsData<S>
+impl<S> Service<Request<Body>> for MetricsService<S>
 where
     S: Service<Request<Body>, Response = Response<BoxBody>> + Clone + Send + 'static,
     S::Future: Send + 'static,
@@ -67,7 +74,11 @@ where
             let client_name = caps.get(6).unwrap().as_str();
             let key = (client_name.to_string(), func_name.to_string());
 
-            if !self.metrics_data.contains_key(&key) {
+            let ret = {
+                let read = METRICS_DATA.read().unwrap();
+                read.contains_key(&key)
+            };
+            if !ret {
                 match register_histogram!(
                     format!("{}_to_{}", client_name, func_name),
                     "request latencies in milliseconds(ms)",
@@ -78,7 +89,10 @@ where
                             "register histogram {} succeeded",
                             format!("{}_to_{}", client_name, func_name)
                         );
-                        self.metrics_data.insert(key.clone(), histogram);
+                        {
+                            let mut write = METRICS_DATA.write().unwrap();
+                            write.insert(key.clone(), histogram);
+                        }
                     }
                     Err(e) => {
                         warn!(
@@ -94,34 +108,37 @@ where
                 }
             }
 
-            let histogram = if let Some(h) = self.metrics_data.get(&key) {
-                h.to_owned()
-            } else {
-                warn!(
-                    "register histogram {} succeeded but get it failed, ignored metrics",
-                    format!("{}_to_{}", client_name, func_name)
-                );
-                return Box::pin(async move {
+            match {
+                let read = METRICS_DATA.read().unwrap();
+                read.get(&key).cloned()
+            } {
+                Some(histogram) => Box::pin(async move {
+                    let started = Instant::now();
+
                     let response = inner.call(req).await?;
+
+                    let elapsed = started.elapsed().as_secs_f64() * 1000f64;
+                    histogram.observe(elapsed);
+
                     Ok(response)
-                });
-            };
-
-            return Box::pin(async move {
-                let started = Instant::now();
-
+                }),
+                None => {
+                    warn!(
+                        "register histogram {} succeeded but get it failed, ignored metrics",
+                        format!("{}_to_{}", client_name, func_name)
+                    );
+                    Box::pin(async move {
+                        let response = inner.call(req).await?;
+                        Ok(response)
+                    })
+                }
+            }
+        } else {
+            Box::pin(async move {
                 let response = inner.call(req).await?;
-
-                let elapsed = started.elapsed().as_secs_f64() * 1000f64;
-                histogram.observe(elapsed);
-
                 Ok(response)
-            });
+            })
         }
-        Box::pin(async move {
-            let response = inner.call(req).await?;
-            Ok(response)
-        })
     }
 }
 
