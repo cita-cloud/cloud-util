@@ -1,6 +1,6 @@
 [package]
 name = "cloud-util"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["ypf <yuitta@163.com>", "Rivtower Technologies <contact@rivtower.com>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -22,8 +22,8 @@ regex = "1.6"
 signal-hook = "0.3"
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 
-cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
-status_code = { package = "cloud-code", git = "https://github.com/cita-cloud/status_code" }
+cita_cloud_proto = "=6.6.1"
+status_code = { package = "cloud-code", version = "0.5" }
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
