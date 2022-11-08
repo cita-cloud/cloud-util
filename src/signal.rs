@@ -18,7 +18,7 @@ use signal_hook::{consts::signal::*, low_level::exit};
 use signal_hook_tokio::Signals;
 
 pub async fn handle_signals() {
-    let mut signals = Signals::new(&[SIGTERM]).unwrap();
+    let mut signals = Signals::new([SIGTERM]).unwrap();
     while let Some(signal) = signals.next().await {
         match signal {
             SIGTERM => {
