@@ -71,7 +71,7 @@ impl Wal {
     }
 
     pub fn create(dir: &str) -> io::Result<Wal> {
-        let fss = read_dir(&dir);
+        let fss = read_dir(dir);
         if fss.is_err() {
             DirBuilder::new().recursive(true).create(dir)?;
         }
