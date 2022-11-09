@@ -22,8 +22,8 @@ regex = "1.6"
 signal-hook = "0.3"
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 
-cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto" }
-status_code = { package = "cloud-code", git = "https://github.com/cita-cloud/status_code" }
+cita_cloud_proto = { git = "https://github.com/cita-cloud/cita_cloud_proto", branch = "v6.6.2" }
+status_code = { package = "cloud-code", git = "https://github.com/cita-cloud/status_code", branch = "v0.6.0" }
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
